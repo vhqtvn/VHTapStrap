@@ -34,10 +34,11 @@
             // lblMode
             // 
             lblMode.AutoSize = true;
+            lblMode.Font = new Font("SpaceMono Nerd Font Mono", 18F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblMode.ForeColor = Color.White;
             lblMode.Location = new Point(0, 0);
             lblMode.Name = "lblMode";
-            lblMode.Size = new Size(59, 25);
+            lblMode.Size = new Size(92, 45);
             lblMode.TabIndex = 0;
             lblMode.Text = "mode";
             // 

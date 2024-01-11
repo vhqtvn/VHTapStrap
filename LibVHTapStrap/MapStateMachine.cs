@@ -49,8 +49,13 @@ namespace LibVHTapStrap
                     CurrentMap = Map.map[__currentMapIndex];
                     OnMapEnter();
                 }
-                OnModeSwitch?.Invoke(this, new MapModeSwitchEvent(CurrentMap.Name, OnceLevel));
+                NotifyModeSwitch();
             }
+        }
+
+        private void NotifyModeSwitch()
+        {
+            OnModeSwitch?.Invoke(this, new MapModeSwitchEvent(CurrentMap.IsDefault ? "" : CurrentMap.Name, OnceLevel));
         }
 
 
@@ -136,7 +141,7 @@ namespace LibVHTapStrap
 
         internal void OnRun()
         {
-            OnModeSwitch?.Invoke(this, new MapModeSwitchEvent(CurrentMap.Name, OnceLevel));
+            NotifyModeSwitch();
         }
     }
 }

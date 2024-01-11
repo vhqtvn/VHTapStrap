@@ -75,12 +75,14 @@ namespace LibVHTapStrap
         private void TAP_OnTapDisconnected(string identifier)
         {
             Console.WriteLine("Disconnected: " + identifier);
+            tapInput.Reset();
         }
 
         private void TAP_OnTapConnected(string identifier, string name, int fw)
         {
             Console.WriteLine("Connected: " + identifier + " " + name + " " + fw);
             TAPManager.Instance.SetTapInputMode(TAPInputMode.Controller());
+            tapInput.Reset();
         }
 
         private void TAP_OnTapped(string identifier, int tapMask)

@@ -149,7 +149,7 @@ namespace LibVHTapStrap
                 }
                 if (parser.TryConsume<Scalar>(out var text))
                 {
-                    if (text == null)
+                    if (text.Value == "null" && text.IsPlainImplicit)
                     {
                         return new TapMapHotkeyEmptyYamlStruct();
                     }

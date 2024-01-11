@@ -149,6 +149,10 @@ namespace LibVHTapStrap
                 }
                 if (parser.TryConsume<Scalar>(out var text))
                 {
+                    if (text == null)
+                    {
+                        return new TapMapHotkeyEmptyYamlStruct();
+                    }
                     return new TapMapHotkeyTextYamlStruct()
                     {
                         Text = text.Value
@@ -237,6 +241,14 @@ namespace LibVHTapStrap
                         return result;
                     }).ToArray()
                 );
+            }
+        }
+
+        internal class TapMapHotkeyEmptyYamlStruct : TapMapHotkeyYamlStruct
+        {
+            public override TapMapHotkeyStruct Convert()
+            {
+                return new TapMapHotkeyEmptyStruct();
             }
         }
 
@@ -343,12 +355,141 @@ namespace LibVHTapStrap
             }
         }
 
+        interface ITapSingleActionYamlStruct
+        {
+            ITapMapHotkeySingleActionStruct Convert();
+        }
+        internal class TapActionYamlStruct
+        {
+            public List<ITapSingleActionYamlStruct> Actions = new List<ITapSingleActionYamlStruct>();
+
+            public ITapMapHotkeySingleActionStruct[] Convert()
+            {
+                return Actions.Select(x => x.Convert()).ToArray();
+            }
+
+            public static ITapSingleActionYamlStruct ParseSingle(IParser parser)
+            {
+                parser.Consume<MappingStart>();
+                Dictionary<string, object> kv = new Dictionary<string, object>();
+                while (!parser.Accept<MappingEnd>(out var _))
+                {
+                    var key = parser.Consume<Scalar>().Value;
+                    switch (key)
+                    {
+                        case "action":
+                        case "message":
+                            {
+                                var value = parser.Consume<Scalar>().Value;
+                                kv.Add(key, value);
+                                break;
+                            }
+                        case "duration":
+                            {
+                                var value = int.Parse(parser.Consume<Scalar>().Value);
+                                kv.Add(key, value);
+                                break;
+                            }
+                        case "vibrate":
+                            {
+                                parser.Consume<SequenceStart>();
+                                var vibrate = new List<int>();
+                                while (!parser.Accept<SequenceEnd>(out var _))
+                                {
+                                    vibrate.Add(int.Parse(parser.Consume<Scalar>().Value));
+                                }
+                                parser.Consume<SequenceEnd>();
+                                kv.Add(key, vibrate.ToArray());
+                                break;
+                            }
+                        default:
+                            throw new Exception($"Invalid key: {key}");
+                    }
+                }
+                parser.Consume<MappingEnd>();
+                if (kv.TryGetValue("action", out var action))
+                {
+                    switch (action)
+                    {
+                        case "vibrate": return TapSingleActionVibrateYamlStruct.Parse(kv);
+                        case "notify": return TapSingleActionNotifyYamlStruct.Parse(kv);
+                    }
+                }
+                throw new Exception("Cannot parse TapSingleActionVibrateYamlStruct");
+            }
+            public static TapActionYamlStruct Parse(IParser parser)
+            {
+                var result = new TapActionYamlStruct();
+                if (!parser.TryConsume<SequenceStart>(out var _))
+                {
+                    result.Actions.Add(ParseSingle(parser));
+                }
+                else
+                {
+                    while (!parser.Accept<SequenceEnd>(out var _))
+                    {
+                        result.Actions.Add(ParseSingle(parser));
+                    }
+                    parser.Consume<SequenceEnd>();
+                }
+                return result;
+            }
+        }
+
+        internal class TapSingleActionVibrateYamlStruct : ITapSingleActionYamlStruct
+        {
+            public int[] Vibrate;
+            public static TapSingleActionVibrateYamlStruct Parse(Dictionary<string, object> kv)
+            {
+                if (!kv.TryGetValue("vibrate", out var vibrate))
+                {
+                    throw new Exception("Missing 'vibrate'");
+                }
+                return new TapSingleActionVibrateYamlStruct()
+                {
+                    Vibrate = (int[])vibrate
+                };
+            }
+            public ITapMapHotkeySingleActionStruct Convert()
+            {
+                return new TapMapHotkeySingleActionVibrateStruct(Vibrate);
+            }
+        }
+
+        internal class TapSingleActionNotifyYamlStruct : ITapSingleActionYamlStruct
+        {
+            public string Message;
+            public int Duration;
+            public static TapSingleActionNotifyYamlStruct Parse(Dictionary<string, object> kv)
+            {
+                if (!kv.TryGetValue("message", out var message))
+                {
+                    throw new Exception("Missing 'message'");
+                }
+                if (!kv.TryGetValue("duration", out var duration))
+                {
+                    throw new Exception("Missing 'duration'");
+                }
+                return new TapSingleActionNotifyYamlStruct()
+                {
+                    Message = (string)message,
+                    Duration = (int)duration
+                };
+            }
+            public ITapMapHotkeySingleActionStruct Convert()
+            {
+                return new TapMapHotkeySingleActionNotifyStruct(Message, Duration);
+            }
+        }
+
         internal class TapMapYamlStruct
         {
             public Dictionary<uint, TapMapHotkeyYamlStruct> Hotkeys = new Dictionary<uint, TapMapHotkeyYamlStruct>();
             public bool IsDefault = false;
-            public bool KeepInStack = false;
+            public bool KeepInStack = true;
             public string? Extends = null;
+            public TapActionYamlStruct? EnterAction = null;
+            public TapActionYamlStruct? ExitAction = null;
 
             public static uint ParseTapHotkeyAnnotation(string annotation)
             {
@@ -374,6 +515,12 @@ namespace LibVHTapStrap
                     var name = key.Value;
                     switch (name)
                     {
+                        case ":enter":
+                            result.EnterAction = TapActionYamlStruct.Parse(parser);
+                            break;
+                        case ":exit":
+                            result.ExitAction = TapActionYamlStruct.Parse(parser);
+                            break;
                         case ":extends":
                             result.Extends = parser.Consume<Scalar>().Value;
                             break;
@@ -396,7 +543,13 @@ namespace LibVHTapStrap
 
             public TapMapStruct Convert(string name)
             {
-                var result = new TapMapStruct(name, Extends, IsDefault, KeepInStack);
+                var result = new TapMapStruct(name,
+                        extends: Extends,
+                        isDefault: IsDefault,
+                        keepInStack: KeepInStack,
+                        enterAction: EnterAction?.Convert(),
+                        exitAction: ExitAction?.Convert()
+                  );
 
                 foreach (var kv in Hotkeys)
                 {

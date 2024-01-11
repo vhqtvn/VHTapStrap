@@ -17,6 +17,24 @@ namespace LibVHTapStrap
         public abstract bool ShouldBePending(uint tapCnt);
     }
 
+    internal class TapMapHotkeyEmptyStruct(
+    ) : TapMapHotkeyStruct
+    {
+        public override string ToString()
+        {
+            return $"Empty()";
+        }
+
+        public override void Invoke<T>(ITapMapHotkeyRunner<T> runner, uint index, T param)
+        {
+        }
+
+        public override bool ShouldBePending(uint tapCnt)
+        {
+            return false;
+        }
+    }
+
     internal class TapMapHotkeyKeyStruct(
         TSHotkeyBase[] keys
     ) : TapMapHotkeyStruct
@@ -123,11 +141,28 @@ namespace LibVHTapStrap
         }
     }
 
+    public interface ITapMapHotkeySingleActionStruct
+    {
+    }
+
+    public class TapMapHotkeySingleActionVibrateStruct(int[] pattern) : ITapMapHotkeySingleActionStruct
+    {
+        public int[] Pattern { get; } = pattern;
+    }
+
+    public class TapMapHotkeySingleActionNotifyStruct(string message, int duration) : ITapMapHotkeySingleActionStruct
+    {
+        public string Message { get; } = message;
+        public int Duration { get; } = duration;
+    }
+
     internal class TapMapStruct(
         string name,
         string? extends,
         bool isDefault = false,
-        bool keepInStack = true
+        bool keepInStack = true,
+        ITapMapHotkeySingleActionStruct[]? enterAction = null,
+        ITapMapHotkeySingleActionStruct[]? exitAction = null
     )
     {
         public TapMapHotkeyStruct[] Hotkeys { get; } = new TapMapHotkeyStruct[32];
@@ -136,6 +171,9 @@ namespace LibVHTapStrap
         public bool IsDefault { get; } = isDefault;
         public bool KeepInStack { get; } = keepInStack;
         public string? Extends { get; } = extends;
+
+        public ITapMapHotkeySingleActionStruct[]? EnterActions { get; } = enterAction;
+        public ITapMapHotkeySingleActionStruct[]? ExitActions { get; } = exitAction;
     }
 
 

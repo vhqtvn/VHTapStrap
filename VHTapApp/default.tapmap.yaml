@@ -1,0 +1,138 @@
+default:
+  '----.': ['a', '&', '@']
+  '---.-': ['e', '!', '=']
+  '--.--': 'i'
+  '-.---': 'o'
+  '.----': ['u', '_']
+
+  '---..': 'n'
+  '--..-': 't'
+  '-..--': ['l', '<']
+  '..---': ['s', ';']
+
+  '--.-.': ['d', '$', '.']
+  '-.-.-': ['m', '*', '-']
+  '.-.--': 'z'
+
+  '-.--.': 'k'
+  '.--.-': ['b', '\\', '|', '/']
+
+  '.---.': 'y'
+
+  '.-.-.': 'w'
+
+  '-...-': {'key': 'Backspace'}
+
+  '-..-.': ['g', '>']
+  '..-.-': 'x'
+
+  '-.-..': 'f'
+  '.-..-': ['q', "'"]
+
+  '.--..': ['p', '+', '%']
+  '..--.': {'key': 'Enter'}
+
+  '....-': ['h', '^', '#']
+  '...-.': ['c', ':', ',']
+  '..-..': ['v', '?']
+  '.-...': ['j', '"']
+  '-....': 'r'
+
+  '.....':
+    - {'key': 'Space'}
+    - {'key': 'Tab'}
+
+  ':extends': 'abstract-master-controls'
+  ':default': true
+  ':enter':
+    - {'action': 'vibrate', 'vibrate': [50]}
+
+numeric:
+  '----.': '1'
+  '---.-': '2'
+  '--.--': '3'
+  '-.---': '4'
+  '.----': '5'
+  '.---.': '6'
+  '.--.-': '7'
+  '.-.--': '8'
+  '..---': '9'
+  '....-': '0'
+
+  ':extends': 'abstract-master-controls'
+  ':enter':
+    - {'action': 'vibrate', 'vibrate': [100,100,100]}
+
+
+symbols:
+  '--.--': ['(', '[']
+  '---.-': [')', ']']
+  '-..--': ['{', '<']
+  '---..': ['}', '>']
+  '.----': ['`', '~']
+  '----.': ['\\', '|', '/']
+  '.--.-': ['@', '#']
+
+  ':extends': 'abstract-master-controls'
+  ':enter':
+    - {'action': 'vibrate', 'vibrate': [100,200,100]}
+
+abstract-master-controls:
+  '--...':
+    - {'mode': {'to': 'master-control', 'type': 'once'}}
+    - {'mode': {'to': 'numeric', 'type': 'once'}}
+    - {'mode': {'to': 'symbols', 'type': 'once'}}
+
+  '...--':
+    - {'mode': {'to': 'master-control', 'type': 'push'}}
+    - {'mode': {'type': 'reset'}}
+    - {'mode': {'to': 'numeric', 'type': 'push'}}
+    - {'mode': {'to': 'symbols', 'type': 'push'}}
+
+master-control:
+  '...--':
+    - {'mode': {'type': 'pop'}}
+    - {'mode': {'type': 'reset'}}
+
+  '....-':
+    - null
+    - {'mode': {'to': 'rest', 'type': 'push'}}
+
+  '.--..': {'mode': {'to': 'numeric', 'type': 'push'}}
+  '.....': {'mode': {'to': 'symbols', 'type': 'push'}}
+
+  '----.': {'key': 'Right'}
+  '---.-': {'key': 'Up'}
+  '--.--': {'key': 'Down'}
+  '-.---': {'key': 'Left'}
+
+  '.---.': {'key': 'End'}
+  '.--.-': {'key': 'PageUp'}
+  '.-.--': {'key': 'PageDown'}
+  '..---': {'key': 'Home'}
+
+  '-...-': {'key': 'Escape'}
+
+  '-.--.': {'modifier': 'Ctrl'}
+  '--.-.': {'modifier': 'Alt'}
+  '---..': {'modifier': 'Shift'}
+  '-.-.-': {'modifier': 'Win'}
+
+  ':in-stack': false
+
+  ':enter':
+    - {'action': 'vibrate', 'vibrate': [50,200,50]}
+
+rest:
+  '....-':
+    - null
+    - null
+    - {'mode': {'type': 'pop'}}
+  
+  ':enter':
+    - {'action': 'vibrate', 'vibrate': [500, 50, 100]}
+    - {'action': 'notify', 'message': 'Tap Disabled', 'duration': 1000}
+
+  ':exit':
+    - {'action': 'notify', 'message': 'Tap Resumed', 'duration': 1000}
+    - {'action': 'vibrate', 'vibrate': [100]}

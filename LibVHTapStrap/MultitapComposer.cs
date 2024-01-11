@@ -43,7 +43,7 @@ namespace LibVHTapStrap
         {
             get;
             set;
-        } = TimeSpan.FromMilliseconds(250);
+        } = TimeSpan.FromMilliseconds(300);
 
         internal event EventHandler<MultitapPendingInputArgs>? OnPendingInput;
         internal event EventHandler<MultitapInputArgs>? OnCommitInput;

@@ -15,13 +15,25 @@ namespace LibVHTapStrap
         public uint OnceLevel { get; } = onceLevel;
     }
 
+    public struct MapActionsEvent(
+        ITapMapHotkeySingleActionStruct[] actions
+    )
+    {
+        public ITapMapHotkeySingleActionStruct[] Actions { get; } = actions;
+    }
+
+    public struct MapResetEvent { }
+
     internal class MapStateMachine
     {
         internal TapMap Map { get; set; } = TapMap.Default();
         public TapMapStruct CurrentMap { get; internal set; } = new TapMapStruct("dummy", null, true, true);
 
         public event EventHandler<MapModeSwitchEvent>? OnModeSwitch;
+        public event EventHandler<MapActionsEvent>? OnMapActionsRequested;
+        public event EventHandler<MapResetEvent>? OnReset;
 
+        private Stack<uint> onceStack = new Stack<uint>();
         private uint OnceLevel = 0;
 
         private uint __currentMapIndex = 0;
@@ -32,17 +44,38 @@ namespace LibVHTapStrap
             {
                 if (__currentMapIndex != value)
                 {
+                    OnMapExit();
                     __currentMapIndex = value;
                     CurrentMap = Map.map[__currentMapIndex];
+                    OnMapEnter();
                 }
                 OnModeSwitch?.Invoke(this, new MapModeSwitchEvent(CurrentMap.Name, OnceLevel));
             }
         }
+
+
+        private void OnMapExit()
+        {
+            if (CurrentMap.ExitActions != null)
+            {
+                OnMapActionsRequested?.Invoke(this, new MapActionsEvent(CurrentMap.ExitActions));
+            }
+        }
+
+        private void OnMapEnter()
+        {
+            if (CurrentMap.EnterActions != null)
+            {
+                OnMapActionsRequested?.Invoke(this, new MapActionsEvent(CurrentMap.EnterActions));
+            }
+        }
+
         private Stack<uint> mapStack = new Stack<uint>();
 
         public void Reset()
         {
             mapStack.Clear();
+            onceStack.Clear();
             OnceLevel = 0;
             CurrentMapIndex = 0;
             CurrentMap = Map.map[0];
@@ -55,7 +88,7 @@ namespace LibVHTapStrap
                 uint newIndex = CurrentMapIndex;
                 while (OnceLevel > 0)
                 {
-                    --OnceLevel;
+                    OnceLevel = onceStack.Pop();
                     newIndex = mapStack.Pop();
                 }
                 CurrentMapIndex = newIndex;
@@ -67,47 +100,35 @@ namespace LibVHTapStrap
             switch (spec.Type)
             {
                 case TapMapHotkeyModeSwitchType.Reset:
-                    Reset();
+                    OnReset?.Invoke(this, new MapResetEvent());
                     break;
                 case TapMapHotkeyModeSwitchType.Pop:
-                    if (mapStack.Count > 0)
+                    while (mapStack.Count > 0)
                     {
-                        if (OnceLevel > 0)
-                            --OnceLevel;
+                        if (onceStack.Count > 0)
+                            OnceLevel = onceStack.Pop();
                         CurrentMapIndex = mapStack.Pop();
+                        if (OnceLevel > 0 || CurrentMap.KeepInStack)
+                        {
+                            break;
+                        }
                     }
                     break;
                 case TapMapHotkeyModeSwitchType.Once:
                     {
                         var nextMapIndex = spec.Target;
-                        if (nextMapIndex != CurrentMapIndex)
-                        {
-                            ++OnceLevel;
-                            mapStack.Push(CurrentMapIndex);
-
-                            CurrentMapIndex = nextMapIndex;
-                        }
+                        onceStack.Push(OnceLevel++);
+                        mapStack.Push(CurrentMapIndex);
+                        CurrentMapIndex = nextMapIndex;
                         break;
                     }
                 case TapMapHotkeyModeSwitchType.Push:
                     {
-                        uint newIndex = CurrentMapIndex;
-                        if (OnceLevel > 0)
-                        {
-                            // follow a once sequence and change mode without commiting, so we need to revert
-                            while (OnceLevel > 0)
-                            {
-                                --OnceLevel;
-                                newIndex = mapStack.Pop();
-                            }
-                        }
                         var nextMapIndex = spec.Target;
-                        if (nextMapIndex != newIndex)
-                        {
-                            mapStack.Push(CurrentMapIndex);
-                            newIndex = nextMapIndex;
-                        }
-                        CurrentMapIndex = newIndex;
+                        onceStack.Push(OnceLevel);
+                        OnceLevel = 0;
+                        mapStack.Push(CurrentMapIndex);
+                        CurrentMapIndex = nextMapIndex;
                         break;
                     }
             }

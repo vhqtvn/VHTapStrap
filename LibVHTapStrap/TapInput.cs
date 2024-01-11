@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using TAPWin;
 using static LibVHTapStrap.User32Interop;
 
 namespace LibVHTapStrap
@@ -29,6 +30,30 @@ namespace LibVHTapStrap
         {
             multiTapComposer.OnCommitInput += MultiTapComposer_OnCommitInput;
             multiTapComposer.OnPendingInput += MultiTapComposer_OnPendingInput;
+            mapStateMachine.OnMapActionsRequested += MapStateMachine_OnMapActionsRequested;
+            mapStateMachine.OnReset += MapStateMachine_OnReset;
+        }
+
+        private void MapStateMachine_OnReset(object? sender, MapResetEvent e)
+        {
+            Reset();
+        }
+
+        private async void MapStateMachine_OnMapActionsRequested(object? sender, MapActionsEvent e)
+        {
+            foreach (var action in e.Actions)
+            {
+                switch (action)
+                {
+                    case TapMapHotkeySingleActionNotifyStruct notify:
+                        break;
+                    case TapMapHotkeySingleActionVibrateStruct vibrate:
+                        TAPManager.Instance.Vibrate(vibrate.Pattern);
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
 
         private int runId = 0;
